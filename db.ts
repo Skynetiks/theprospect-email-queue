@@ -9,7 +9,8 @@ const pool = new Pool({
   database: process.env.DATABASE_NAME,
   port: parseInt(process.env.DATABASE_PORT!),
   host: process.env.DATABASE_HOST,
-  ssl: true
+  ssl: true,
+  idleTimeoutMillis: 1
 });
 
 // Function to handle queries
