@@ -9,7 +9,7 @@
     "pg": "^8.12.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "npx ts-node server.ts"
   },
   "name": "theprospect-email-queue",
   "version": "1.0.0",
