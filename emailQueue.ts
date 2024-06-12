@@ -1,56 +1,43 @@
 import { Queue, Worker } from "bullmq";
-import { db } from "@/db";
 import { sendEmailSES } from "./aws";
+import { getRedisConnection } from "./redis";
+import { query } from "./db";
 
-const sendEmail = async (email, campaignOrg) => {
+const sendEmail = async (email: { senderId: string; leadId: string; subject: string; bodyHTML: string; replyToEmail: string; id: string; emailCampaignId: string; }, campaignOrg: { name: string; id: any; }) => {
 	try {
-		const user = await db.user.findFirst({
-			where: { id: email.senderId },
-		});
+		const userResult = await query('SELECT * FROM users WHERE id = $1', [email.senderId]);
+		const user = userResult.rows[0];
 		if (!user) throw new Error("User not found");
-
-		const lead = await db.lead.findFirst({
-			where: { id: email.leadId },
-		});
+	
+		const leadResult = await query('SELECT * FROM leads WHERE id = $1', [email.leadId]);
+		const lead = leadResult.rows[0];
 		if (!lead) throw new Error("Lead not found");
-
+	
 		const emailSent = await sendEmailSES(
-			`${campaignOrg.name.toLowerCase().replace(" ", "-").replace(".", "")}-${campaignOrg.id}@theprospect.ai`,
-			campaignOrg.name,
-			lead.email,
-			email.subject,
-			email.bodyHTML,
-			email.replyToEmail,
+		  `${campaignOrg.name.toLowerCase().replace(" ", "-").replace(".", "")}-${campaignOrg.id}@theprospect.ai`,
+		  campaignOrg.name,
+		  lead.email,
+		  email.subject,
+		  email.bodyHTML,
+		  email.replyToEmail,
 		);
-
+	
 		if (emailSent.success) {
-			await db.email.update({
-				where: { id: email.id },
-				data: { status: "SENT" },
-			});
-
-			await db.emailCampaign.update({
-				where: { id: email.emailCampaignId },
-				data: { sentEmailCount: { increment: 1 } },
-			});
-
-			await db.organization.update({
-				where: { id: campaignOrg.id },
-				data: { sentEmailCount: { increment: 1 } },
-			});
+		  await query('UPDATE emails SET status = $1 WHERE id = $2', ['SENT', email.id]);
+	
+		  await query('UPDATE email_campaigns SET sent_email_count = sent_email_count + 1 WHERE id = $1', [email.emailCampaignId]);
+	
+		  await query('UPDATE organizations SET sent_email_count = sent_email_count + 1 WHERE id = $1', [campaignOrg.id]);
 		} else {
-			throw new Error("Email not sent by AWS");
+		  throw new Error("Email not sent by AWS");
 		}
-	} catch (error) {
-		await db.email.update({
-			where: { id: email.id },
-			data: { status: "ERROR" },
-		});
+	  } catch (error) {
+		await query('UPDATE emails SET status = $1 WHERE id = $2', ['ERROR', email.id]);
 		throw new Error("Error in sendEmail: " + error);
-	}
+	  }
 };
 
-const createWorker = async (campaignId) => {
+const createWorker = async (campaignId: string) => {
 	const connection = await getRedisConnection();
 	if (!connection) {
 		console.error("Redis connection failed");
@@ -82,7 +69,7 @@ const createWorker = async (campaignId) => {
 	console.log(`Worker created for queue: ${queueName}`);
 };
 
-export async function initializeWorkerForCampaign(campaignId) {
+export async function initializeWorkerForCampaign(campaignId: string) {
 	try {
 		await createWorker(campaignId);
 	} catch (error) {
@@ -90,7 +77,7 @@ export async function initializeWorkerForCampaign(campaignId) {
 	}
 }
 
-export async function addEmailToQueue(email, campaignOrg, campaignId, interval, index) {
+export async function addEmailToQueue(email: { senderId: string; leadId: string; subject: string; bodyHTML: string; replyToEmail: string; id: string; emailCampaignId: string; }, campaignOrg: string, campaignId: string, interval: number, index: number) {
 	const connection = await getRedisConnection();
 	if (!connection) {
 		console.error("Redis connection failed");
@@ -116,20 +103,4 @@ export async function addEmailToQueue(email, campaignOrg, campaignId, interval, 
 			},
 		},
 	);
-}
-
-import { Redis } from "ioredis";
-
-let connection = null;
-export async function getRedisConnection() {
-	if (process.env.REDIS_URL && !connection) {
-		connection = new Redis(process.env.REDIS_URL, {
-			maxRetriesPerRequest: null,
-			lazyConnect: true,
-		});
-		connection.on("error", function (err) {
-			connection = null;
-		});
-	}
-	return connection;
 }

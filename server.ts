@@ -1,10 +1,13 @@
 import express from 'express';
-import { initializeWorkerForCampaign, addEmailToQueue } from './path-to-your-worker-file';
+import { initializeWorkerForCampaign, addEmailToQueue } from './emailQueue';
+import { authMiddleware } from './middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+require("dotenv").config()
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(authMiddleware); // Apply the authentication middleware to all routes
 
 // Initialize the worker for a campaign
 app.post('/initialize-worker', async (req, res) => {
@@ -16,7 +19,7 @@ app.post('/initialize-worker', async (req, res) => {
   try {
     await initializeWorkerForCampaign(campaignId);
     res.status(200).send('Worker initialized');
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to initialize worker: ${error.message}`);
     res.status(500).send('Failed to initialize worker');
   }
@@ -33,7 +36,7 @@ app.post('/add-email', async (req, res) => {
   try {
     await addEmailToQueue(email, campaignOrg, campaignId, interval, index);
     res.status(200).send('Email added to queue');
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to add email to queue: ${error.message}`);
     res.status(500).send('Failed to add email to queue');
   }
