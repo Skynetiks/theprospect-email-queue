@@ -2,14 +2,15 @@ import { Queue, Worker } from "bullmq";
 import { sendEmailSES } from "./aws";
 import { getRedisConnection } from "./redis";
 import { query } from "./db";
+import { CampaignOrg } from "./types";
 
 const sendEmail = async (email: { senderId: string; leadId: string; subject: string; bodyHTML: string; replyToEmail: string; id: string; emailCampaignId: string; }, campaignOrg: { name: string; id: any; }) => {
 	try {
-		const userResult = await query('SELECT * FROM users WHERE id = $1', [email.senderId]);
+		const userResult = await query('SELECT * FROM "User" WHERE id = $1;', [email.senderId]);
 		const user = userResult.rows[0];
 		if (!user) throw new Error("User not found");
 	
-		const leadResult = await query('SELECT * FROM leads WHERE id = $1', [email.leadId]);
+		const leadResult = await query('SELECT * FROM "Lead" WHERE id = $1', [email.leadId]);
 		const lead = leadResult.rows[0];
 		if (!lead) throw new Error("Lead not found");
 	
@@ -23,16 +24,16 @@ const sendEmail = async (email: { senderId: string; leadId: string; subject: str
 		);
 	
 		if (emailSent.success) {
-		  await query('UPDATE emails SET status = $1 WHERE id = $2', ['SENT', email.id]);
+		  await query('UPDATE "Email" SET status = $1 WHERE id = $2', ['SENT', email.id]);
 	
-		  await query('UPDATE email_campaigns SET sent_email_count = sent_email_count + 1 WHERE id = $1', [email.emailCampaignId]);
+		  await query('UPDATE "EmailCampaign" SET "sentEmailCount" = "sentEmailCount" + 1 WHERE id = $1', [email.emailCampaignId]);
 	
-		  await query('UPDATE organizations SET sent_email_count = sent_email_count + 1 WHERE id = $1', [campaignOrg.id]);
+		  await query('UPDATE "Organization" SET "sentEmailCount" = "sentEmailCount" + 1 WHERE id = $1', [campaignOrg.id]);
 		} else {
 		  throw new Error("Email not sent by AWS");
 		}
 	  } catch (error) {
-		await query('UPDATE emails SET status = $1 WHERE id = $2', ['ERROR', email.id]);
+		await query('UPDATE "Email" SET status = $1 WHERE id = $2', ['ERROR', email.id]);
 		throw new Error("Error in sendEmail: " + error);
 	  }
 };
@@ -77,13 +78,13 @@ export async function initializeWorkerForCampaign(campaignId: string) {
 	}
 }
 
-export async function addEmailToQueue(email: { senderId: string; leadId: string; subject: string; bodyHTML: string; replyToEmail: string; id: string; emailCampaignId: string; }, campaignOrg: string, campaignId: string, interval: number, index: number) {
+export async function addEmailToQueue(email: { senderId: string; leadId: string; subject: string; bodyHTML: string; replyToEmail: string; id: string; emailCampaignId: string; }, campaignOrg: CampaignOrg, interval: number, index: number) {
 	const connection = await getRedisConnection();
 	if (!connection) {
 		console.error("Redis connection failed");
 		return;
 	}
-	const queueName = `emailQueue-${campaignId}`;
+	const queueName = `emailQueue-${email.emailCampaignId}`;
 	const emailQueue = new Queue(queueName, { connection });
 
 	// Calculate delay based on the job's index in the batch

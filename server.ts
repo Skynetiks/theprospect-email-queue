@@ -1,6 +1,7 @@
 import express from 'express';
 import { initializeWorkerForCampaign, addEmailToQueue } from './emailQueue';
 import { authMiddleware } from './middleware';
+import { isCampaignOrg, isEmail } from './types';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,14 +28,23 @@ app.post('/initialize-worker', async (req, res) => {
 
 // Add an email to the queue
 app.post('/add-email', async (req, res) => {
-  const { email, campaignOrg, campaignId, interval, index } = req.body;
-
-  if (!email || !campaignOrg || !campaignId || interval == null || index == null) {
-    return res.status(400).send('Missing required parameters');
+  const { email, campaignOrg, interval, index } = req.body;
+  
+  if(!isEmail(email)){
+    return res.status(400).send('Invalid email');
+  }
+  if(!isCampaignOrg(campaignOrg)){
+    return res.status(400).send('Invalid campaignOrg');
+  }
+  if(!interval){
+    return res.status(400).send('Invalid interval');
+  }
+  if(!index){
+    return res.status(400).send('Invalid index');
   }
 
   try {
-    await addEmailToQueue(email, campaignOrg, campaignId, interval, index);
+    await addEmailToQueue(email, campaignOrg, interval, index);
     res.status(200).send('Email added to queue');
   } catch (error: any) {
     console.error(`Failed to add email to queue: ${error.message}`);
