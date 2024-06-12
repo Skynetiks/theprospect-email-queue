@@ -4,7 +4,12 @@ import dotenv from "dotenv";
 dotenv.config(); // Load environment variables from .env file
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // Use your environment variable or connection string
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  port: parseInt(process.env.DATABASE_PORT!),
+  host: process.env.DATABASE_HOST,
+  ssl: true
 });
 
 // Function to handle queries
