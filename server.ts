@@ -2,11 +2,13 @@ import express from 'express';
 import { initializeWorkerForCampaign, addEmailToQueue } from './emailQueue';
 import { authMiddleware } from './middleware';
 import { isCampaignOrg, isEmail } from './types';
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-require("dotenv").config()
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(authMiddleware); // Apply the authentication middleware to all routes
 
@@ -14,15 +16,24 @@ app.use(authMiddleware); // Apply the authentication middleware to all routes
 app.post('/initialize-worker', async (req, res) => {
   const { campaignId } = req.body;
   if (!campaignId) {
-    return res.status(400).send('Campaign ID is required');
+    return res.status(400).json({
+      success: false,
+      message: 'Campaign ID is required',
+    });
   }
 
   try {
     await initializeWorkerForCampaign(campaignId);
-    res.status(200).send('Worker initialized');
+    res.status(200).json({
+      success: true,
+      message: 'Worker initialized',
+    });
   } catch (error: any) {
     console.error(`Failed to initialize worker: ${error.message}`);
-    res.status(500).send('Failed to initialize worker');
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initialize worker',
+    });
   }
 });
 
@@ -30,25 +41,43 @@ app.post('/initialize-worker', async (req, res) => {
 app.post('/add-email', async (req, res) => {
   const { email, campaignOrg, interval, index } = req.body;
   
-  if(!isEmail(email)){
-    return res.status(400).send('Invalid email');
+  if (!isEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid email',
+    });
   }
-  if(!isCampaignOrg(campaignOrg)){
-    return res.status(400).send('Invalid campaignOrg');
+  if (!isCampaignOrg(campaignOrg)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid campaignOrg',
+    });
   }
-  if(!interval){
-    return res.status(400).send('Invalid interval');
+  if (!interval) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid interval',
+    });
   }
-  if(!index){
-    return res.status(400).send('Invalid index');
+  if (!index) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid index',
+    });
   }
 
   try {
     await addEmailToQueue(email, campaignOrg, interval, index);
-    res.status(200).send('Email added to queue');
+    res.status(200).json({
+      success: true,
+      message: 'Email added to queue',
+    });
   } catch (error: any) {
     console.error(`Failed to add email to queue: ${error.message}`);
-    res.status(500).send('Failed to add email to queue');
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add email to queue',
+    });
   }
 });
 
