@@ -2,7 +2,7 @@ module.exports = {
     apps: [
       {
         name: 'theprospect-email-queue',
-        script: 'ts-node',
+        script: './node_modules/.bin/ts-node',
         args: 'server.ts',
         watch: true,
         env_production: {
