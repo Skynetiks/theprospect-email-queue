@@ -24,6 +24,7 @@ const sendEmail = async (email: { senderId: string; leadId: string; subject: str
 		);
 	
 		if (emailSent.success) {
+		  console.log(`Email ${email.id} sent successfully using queue`)
 		  await query('UPDATE "Email" SET status = $1 WHERE id = $2', ['SENT', email.id]);
 	
 		  await query('UPDATE "EmailCampaign" SET "sentEmailCount" = "sentEmailCount" + 1 WHERE id = $1', [email.emailCampaignId]);
