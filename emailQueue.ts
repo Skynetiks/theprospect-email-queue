@@ -90,18 +90,23 @@ export async function addEmailToQueue(email: { senderId: string; leadId: string;
 	// Calculate delay based on the job's index in the batch
 	const delay = index * interval * 1000;
 
-	await emailQueue.add(
-		email.id,
-		{ email, campaignOrg },
-		{
-			removeOnComplete: true,
-			removeOnFail: true,
-			attempts: 3, // Total attempts including the first try and two retries
-			delay: delay,
-			backoff: {
-				type: "exponential", // Exponential backoff strategy
-				delay: 1000, // Initial delay of 1 second
+	try{
+		await emailQueue.add(
+			email.id,
+			{ email, campaignOrg },
+			{
+				removeOnComplete: true,
+				removeOnFail: true,
+				attempts: 3, // Total attempts including the first try and two retries
+				delay: delay,
+				backoff: {
+					type: "exponential", // Exponential backoff strategy
+					delay: 1000, // Initial delay of 1 second
+				},
 			},
-		},
-	);
+		);
+	console.log(`Email with id ${email.id} added to queue ${queueName}`);
+	} catch (error) {
+		console.error(`Failed to add email with id ${email.id} to queue emailQueue-${email.emailCampaignId}:`, error);
+	}
 }
