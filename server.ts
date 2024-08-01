@@ -1,6 +1,5 @@
 import express from 'express';
 import { initializeWorkerForCampaign, addEmailToQueue } from './emailQueue';
-import { authMiddleware } from './middleware';
 import { isCampaignOrg, isEmail } from './types';
 import dotenv from 'dotenv';
 
@@ -10,10 +9,21 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json()); // Middleware to parse JSON bodies
-app.use(authMiddleware); // Apply the authentication middleware to all routes
 
 // Initialize the worker for a campaign
 app.post('/initialize-worker', async (req, res) => {
+  const authToken = req.headers['authorization'];
+
+  if (!authToken) {
+    res.status(401).send('Authorization token is required');
+    return;
+  }
+
+  if (authToken !== process.env.AUTH_TOKEN) {
+    res.status(403).send('Invalid authorization token');
+    return;
+  }
+
   const { campaignId } = req.body;
   if (!campaignId) {
     return res.status(400).json({
@@ -39,6 +49,18 @@ app.post('/initialize-worker', async (req, res) => {
 
 // Add an email to the queue
 app.post('/add-email', async (req, res) => {
+  const authToken = req.headers['authorization'];
+
+  if (!authToken) {
+    res.status(401).send('Authorization token is required');
+    return;
+  }
+
+  if (authToken !== process.env.AUTH_TOKEN) {
+    res.status(403).send('Invalid authorization token');
+    return;
+  }
+
   const { email, campaignOrg, interval, index } = req.body;
   
   if (!isEmail(email)) {
