@@ -81,6 +81,10 @@ app.post('/add-email', async (req, res) => {
   }
 });
 
+app.get("/", (req:any, res: any) => {
+  res.sendStatus(200);
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
