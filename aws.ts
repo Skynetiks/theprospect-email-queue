@@ -60,6 +60,7 @@ export async function sendEmailSES(sender: string, senderName: string, recipient
 			/* more items */
 			replyToEmail || sender,
 		],
+		ConfigurationSetName: "engagement-tracking"
 	});
 
 	try {
